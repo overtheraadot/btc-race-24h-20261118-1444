@@ -1,0 +1,36 @@
+# btc-race-24h-20261118-1444 — Account A (overtheraa)
+
+A shallow-dip ladder mean-reversion bot trading cbBTC/USDC on 1-minute bars.
+
+## Strategy
+
+On this pool the 1-minute noise is tiny (a few bps per bar) but the price
+keeps dipping 50–150 bps below its recent high and then bouncing part-way
+back. The bot buys those dips in scaled tranches and sells the bounce:
+
+- **Entry:** close ≥ 60 bps below the rolling 30-bar high of closes → buy
+  25% of equity. A deeper dip (≥ 100 bps) adds another 25%, and ≥ 140 bps
+  adds a final 25% (max 75% deployed).
+- **Exit:** sell everything when the close is ≥ 60 bps above the
+  volume-weighted average fill price, or ≥ 250 bps below it (hard stop),
+  or the position has been held 120 bars, or bar 1380 is reached (never
+  leave a position to the forced flatten at the end of the window).
+- **Pacing:** 30-bar cooldown after each full exit, at most 12 round trips,
+  no new entries after bar 1200.
+
+## Implementation
+
+- `main.ts` — the bot, written against the kit's `vendor/makefun-bars.ts`
+  shim (copied byte-for-byte from the kit SDK). All price comparisons are
+  exact `BigInt` arithmetic in the bars' raw integer units; sizing uses
+  integer micro-USDC.
+- Deterministic: decisions depend only on the bars and fills the harness
+  sends — no wall clock, no randomness, no environment, no network.
+
+## Local grade
+
+From the kit directory:
+
+```
+node cli/makefun.mjs grade-local --kit . --bot <path-to-this-repo> --driver process
+```
